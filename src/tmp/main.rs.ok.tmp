@@ -1,0 +1,22 @@
+use std::fs;
+use std::io::{BufRead, BufReader};
+use std::error::Error;
+
+fn main() -> Result<(), Box<dyn Error>> {
+    let fichier_mount = fs::File::open("/proc/mounts")?;
+    let lecteur_mount = BufReader::new(fichier_mount);
+
+    for ligne in lecteur_mount.lines() {
+        let ligne = ligne?;
+        let champs: Vec<&str> = ligne.split_whitespace().collect();
+
+        if champs.len() >= 6 {
+            println!("Système de fichiers: {}", champs[0]);
+            println!("Point de montage: {}", champs[1]);
+            println!("Type de système de fichiers: {}", champs[2]);
+            println!("----------------------");
+        }
+    }
+
+    Ok(())
+}
