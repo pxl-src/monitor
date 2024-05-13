@@ -33,9 +33,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
 
     // Convert MemInfo to JSON
-    let json_data = to_string(&sysmonitor)?;
-
-    println!("{}", json_data);
+    println!("{}", serde_json::to_string_pretty(&sysmonitor).unwrap());
+//    let json_data = to_string(&sysmonitor)?;
+//    println!("{}", json_data);
 
     Ok(())
 }
