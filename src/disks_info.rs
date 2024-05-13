@@ -1,5 +1,5 @@
 use serde::{Serialize};
-use sysinfo::{Disks, System};
+use sysinfo::{Disks};
 
 #[derive(Serialize)]
 pub struct DiskInfo {

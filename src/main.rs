@@ -1,23 +1,27 @@
-#![allow(unused_imports)]
 use serde::{Serialize};
-use serde_json::to_string;
-use sysinfo::{Disks, System};
+//use serde_json::to_string;
+//use sysinfo::{Disks, System};
 
 use std::time::{SystemTime, UNIX_EPOCH};
 
+mod memory_info ;
 use crate::memory_info::get_memory_info;
 use crate::memory_info::MemInfo;
+
+mod disks_info ;
 use crate::disks_info::get_disk_info;
 use crate::disks_info::DiskInfo;
 
-mod disks_info ;
-mod memory_info ;
+mod net_info ;
+use crate::net_info::get_net_info;
+use crate::net_info::NetInfo;
 
 #[derive(Serialize)]
     struct Monitor {
         timestamp: u64,
         disk_info: Vec<DiskInfo>,
         memory_info: MemInfo,
+        net_info: Vec<NetInfo>,
     }
 
 
@@ -30,6 +34,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         timestamp,
         memory_info: get_memory_info()?,
         disk_info: get_disk_info()?,
+        net_info: get_net_info()?,
     };
 
     // Convert MemInfo to JSON
