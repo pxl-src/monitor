@@ -16,12 +16,18 @@ mod net_info ;
 use crate::net_info::get_net_info;
 use crate::net_info::NetInfo;
 
+mod process_info ;
+use crate::process_info::get_proc_info;
+use crate::process_info::ProcInfo;
+
+
 #[derive(Serialize)]
     struct Monitor {
         timestamp: u64,
         disk_info: Vec<DiskInfo>,
         memory_info: MemInfo,
         net_info: Vec<NetInfo>,
+        proc_info: Vec<ProcInfo>,
     }
 
 
@@ -35,6 +41,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         memory_info: get_memory_info()?,
         disk_info: get_disk_info()?,
         net_info: get_net_info()?,
+        proc_info: get_proc_info()?,
     };
 
     // Convert MemInfo to JSON
