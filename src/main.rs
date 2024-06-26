@@ -36,7 +36,7 @@ struct Args {
 }
 
 
-#[derive(Serialize)]
+#[derive(Serialize, Default)]
     struct Monitor {
         timestamp: u64,
         disk_info: Option<Vec<DiskInfo>>,
@@ -69,17 +69,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     if args.include_net {
-        // Get network information using sysinfo or other libraries
         net_info = Some(get_net_info()?) ;
     }
 
     if args.include_proc {
-        // Get process information using sysinfo
         proc_info = Some(get_proc_info()?);
-    }
-
-
-
+    } 
 
     let sysmonitor = Monitor {
         timestamp,
