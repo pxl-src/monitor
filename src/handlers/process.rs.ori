@@ -1,0 +1,41 @@
+use hyper::{Body, Response};
+use serde::Serialize;
+//use std::fs::read_dir;
+use std::io;
+use std::process::Command;
+
+#[derive(Serialize)]
+struct ProcessInfo {
+    pid: i32,
+    comm: String,
+    state: String,
+    ppid: i32,
+    rss: u64,
+}
+
+pub async fn get_process_info() -> io::Result<Response<Body>> {
+    let output = Command::new("ps")
+        .arg("-eo")
+        .arg("pid,comm,state,ppid,rss")
+        .output()
+        .expect("Failed to execute command");
+
+    let output_str = String::from_utf8_lossy(&output.stdout);
+    let mut process_infos = Vec::new();
+
+    for line in output_str.lines().skip(1) {
+        let parts: Vec<&str> = line.split_whitespace().collect();
+        if parts.len() == 5 {
+            process_infos.push(ProcessInfo {
+                pid: parts[0].parse().unwrap_or(0),
+                comm: parts[1].to_string(),
+                state: parts[2].to_string(),
+                ppid: parts[3].parse().unwrap_or(0),
+                rss: parts[4].parse().unwrap_or(0),
+            });
+        }
+    }
+
+    let json = serde_json::to_string_pretty(&process_infos).unwrap();
+    Ok(Response::new(Body::from(json)))
+}

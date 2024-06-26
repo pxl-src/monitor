@@ -1,93 +1,74 @@
-use serde::{Serialize};
-//use serde_json::to_string;
-//use sysinfo::{Disks, System};
-
-use std::time::{SystemTime, UNIX_EPOCH};
-
+use hyper::{Body, Request, Response, Server};
+use hyper::service::{make_service_fn, service_fn};
 use clap::Parser;
+use daemonize::Daemonize;
+use std::convert::Infallible;
+use std::net::SocketAddr;
+use std::fs::File;
+//use std::path::Path;
 
-mod memory_info ;
-use crate::memory_info::get_memory_info;
-use crate::memory_info::MemInfo;
+mod handlers;
+use handlers::{cpu::get_cpu_info, mem::get_mem_info, swap::get_swap_info, load::get_load_info, uptime::get_uptime_info, disk::get_disk_info, network::get_network_info, process::get_process_info};
 
-mod disks_info ;
-use crate::disks_info::get_disk_info;
-use crate::disks_info::DiskInfo;
-
-mod net_info ;
-use crate::net_info::get_net_info;
-use crate::net_info::NetInfo;
-
-mod process_info ;
-use crate::process_info::get_proc_info;
-use crate::process_info::ProcInfo;
-
-#[derive(Parser)]
-#[clap(author, version, about = "Monitor system resources")]
+#[derive(Parser, Debug)]
+#[command(author, version, about, long_about = None)]
 struct Args {
-    #[clap(short = 'd', long = "disk", help = "Include disk information")]
-    include_disk: bool,
-    #[clap(short = 'm', long = "memory", help = "Include memory information")]
-    include_memory: bool,
-    #[clap(short = 'n', long = "net", help = "Include network information")]
-    include_net: bool,
-    #[clap(short = 'p', long = "proc", help = "Include process information")]
-    include_proc: bool,
+    #[arg(short, long, default_value = "0.0.0.0")]
+    address: String,
+
+    #[arg(short, long, default_value_t = 80)]
+    port: u16,
+
+    #[arg(long)]
+    daemon: bool,
 }
 
-
-#[derive(Serialize, Default)]
-    struct Monitor {
-        timestamp: u64,
-        disk_info: Option<Vec<DiskInfo>>,
-        memory_info: Option<MemInfo>,
-        net_info: Option<Vec<NetInfo>>,
-        proc_info: Option<Vec<ProcInfo>>,
-    }
-
-
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-
-    let now = SystemTime::now().duration_since(UNIX_EPOCH)?;
-    let timestamp = now.as_millis() as u64;
-
-    let mut disk_info: Option<Vec<DiskInfo>> = None;
-    let mut memory_info: Option<MemInfo> = None;
-    let mut net_info: Option<Vec<NetInfo>> = None;
-    let mut proc_info: Option<Vec<ProcInfo>> = None;
-
-        let args = Args::parse(); // Parses command-line arguments
-
-
-    if args.include_disk {
-        // Get disk information using sysinfo or other libraries
-        disk_info = Some(get_disk_info()?) ;
-    }
-
-    if args.include_memory {
-        memory_info = Some(get_memory_info()?) ;
-    }
-
-    if args.include_net {
-        net_info = Some(get_net_info()?) ;
-    }
-
-    if args.include_proc {
-        proc_info = Some(get_proc_info()?);
-    } 
-
-    let sysmonitor = Monitor {
-        timestamp,
-        memory_info,
-        disk_info ,
-        net_info ,
-        proc_info ,
+async fn handle_request(req: Request<Body>) -> Result<Response<Body>, Infallible> {
+    let response = match req.uri().path() {
+        "/cpu" => get_cpu_info().await.unwrap_or_else(|_| Response::builder().status(500).body(Body::from("Internal Server Error")).unwrap()),
+        "/mem" => get_mem_info().await.unwrap_or_else(|_| Response::builder().status(500).body(Body::from("Internal Server Error")).unwrap()),
+        "/swap" => get_swap_info().await.unwrap_or_else(|_| Response::builder().status(500).body(Body::from("Internal Server Error")).unwrap()),
+        "/load" => get_load_info().await.unwrap_or_else(|_| Response::builder().status(500).body(Body::from("Internal Server Error")).unwrap()),
+        "/uptime" => get_uptime_info().await.unwrap_or_else(|_| Response::builder().status(500).body(Body::from("Internal Server Error")).unwrap()),
+        "/disk" => get_disk_info().await.unwrap_or_else(|_| Response::builder().status(500).body(Body::from("Internal Server Error")).unwrap()),
+        "/network" => get_network_info().await.unwrap_or_else(|_| Response::builder().status(500).body(Body::from("Internal Server Error")).unwrap()),
+        "/process" => get_process_info().await.unwrap_or_else(|_| Response::builder().status(500).body(Body::from("Internal Server Error")).unwrap()),
+        _ => Response::builder().status(404).body(Body::from("Not Found")).unwrap(),
     };
 
-    // Convert MemInfo to JSON
-    println!("{}", serde_json::to_string_pretty(&sysmonitor).unwrap());
-//    let json_data = to_string(&sysmonitor)?;
-//    println!("{}", json_data);
+    Ok(response)
+}
 
-    Ok(())
+#[tokio::main]
+async fn main() {
+    let args = Args::parse();
+
+    if args.daemon {
+        let stdout = File::create("/tmp/server_monitor.out").unwrap();
+        let stderr = File::create("/tmp/server_monitor.err").unwrap();
+
+        let daemonize = Daemonize::new()
+            .pid_file("/tmp/server_monitor.pid")
+            .stdout(stdout)
+            .stderr(stderr);
+
+        match daemonize.start() {
+            Ok(_) => println!("Server monitoring daemonized, pid file created at /tmp/server_monitor.pid"),
+            Err(e) => eprintln!("Error, {}", e),
+        }
+    }
+
+    let addr = format!("{}:{}", args.address, args.port).parse::<SocketAddr>().unwrap();
+
+    let make_svc = make_service_fn(|_conn| {
+        async { Ok::<_, Infallible>(service_fn(handle_request)) }
+    });
+
+    let server = Server::bind(&addr).serve(make_svc);
+
+    println!("Listening on http://{}", addr);
+
+    if let Err(e) = server.await {
+        eprintln!("server error: {}", e);
+    }
 }
