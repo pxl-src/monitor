@@ -6,3 +6,5 @@ pub mod uptime;
 pub mod disk;
 pub mod network;
 pub mod process;
+
+pub mod all;

@@ -9,7 +9,7 @@ use std::fs::File;
 use env_logger;
 
 mod handlers;
-use handlers::{cpu::get_cpu_info, mem::get_mem_info, swap::get_swap_info, load::get_load_info, uptime::get_uptime_info, disk::get_disk_info, network::get_network_info, process::get_process_info};
+use handlers::{cpu::get_cpu_info, mem::get_mem_info, swap::get_swap_info, load::get_load_info, uptime::get_uptime_info, disk::get_disk_info, network::get_network_info, process::get_process_info, all::get_all_info};
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -34,6 +34,7 @@ async fn handle_request(req: Request<Body>) -> Result<Response<Body>, Infallible
         "/disk" => get_disk_info().await.unwrap_or_else(|_| Response::builder().status(500).body(Body::from("Internal Server Error")).unwrap()),
         "/network" => get_network_info().await.unwrap_or_else(|_| Response::builder().status(500).body(Body::from("Internal Server Error")).unwrap()),
         "/process" => get_process_info().await.unwrap_or_else(|_| Response::builder().status(500).body(Body::from("Internal Server Error")).unwrap()),
+        "/all" => get_all_info().await.unwrap_or_else(|_| Response::builder().status(500).body(Body::from("Internal Server Error")).unwrap()),
         _ => Response::builder().status(404).body(Body::from("Not Found")).unwrap(),
     };
 
